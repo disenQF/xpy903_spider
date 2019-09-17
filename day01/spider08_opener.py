@@ -70,5 +70,17 @@ def get_profile():
         print(bytes.decode('utf-8'))
 
 
+def proxy_get(url):
+    opener = build_opener(HTTPHandler(),
+                         HTTPCookieProcessor(CookieJar()),
+                         ProxyHandler(proxies={'https': '113.119.38.80:3128'}))
+    resp = opener.open(url, timeout=10)
+    if resp.code == 200:
+        bytes = resp.read()
+        # print(bytes.decode('utf-8'))
+        with open('baidu_ip.html', 'wb') as f:
+            f.write(bytes)
+
+
 if __name__ == '__main__':
-    login()
+    proxy_get('http://www.baidu.com/s?wd=ip')
