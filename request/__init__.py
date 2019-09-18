@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # coding: utf-8
 from http.client import HTTPResponse
-from urllib.request import Request, urlopen
+from urllib.request import Request, urlopen, urlretrieve
 from urllib.parse import urlencode
 
 """
@@ -25,3 +25,7 @@ def get(url,
         req = Request(url)
 
     return urlopen(req)
+
+
+def save_img(url, filename):
+    urlretrieve(url, filename)

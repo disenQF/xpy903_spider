@@ -1,8 +1,10 @@
 #!/usr/bin/python3
 # coding: utf-8
+import hashlib
+
 from lxml import etree
 
-from request import get
+from request import get, save_img
 
 url = 'http://sc.chinaz.com/tupian/shuaigetupian.html'
 
@@ -13,6 +15,7 @@ def download(url, callback):
         html = resp.read().decode('utf-8')
         # print(html)
         callback(html)
+
 
 def parse(html):
     root = etree.HTML(html)
@@ -25,9 +28,17 @@ def parse(html):
         cover_url = img_a_element.xpath('./img/@src2')[0]
 
         print(name, info_url, cover_url)
+        save(cover_url, True)
+
 
 def save(url, flag=False):
-    pass
+    filename = url.split('/')[-1]
+    if flag:
+        ext = filename.split('.')[-1]
+        filename = hashlib.md5(url.encode('utf-8')).hexdigest()+"."+ext
+
+    print(filename)
+    save_img(url, 'images/'+filename)
 
 
 if __name__ == '__main__':
