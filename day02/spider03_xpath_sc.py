@@ -4,7 +4,7 @@ import hashlib
 
 from lxml import etree
 
-from request import get, save_img
+from request import get, save_file
 
 url = 'http://sc.chinaz.com/tupian/shuaigetupian.html'
 
@@ -38,7 +38,7 @@ def save(url, flag=False):
         filename = hashlib.md5(url.encode('utf-8')).hexdigest()+"."+ext
 
     print(filename)
-    save_img(url, 'images/'+filename)
+    save_file(url, 'images/' + filename)
 
 
 if __name__ == '__main__':

@@ -27,5 +27,5 @@ def get(url,
     return urlopen(req)
 
 
-def save_img(url, filename):
+def save_file(url, filename):
     urlretrieve(url, filename)
