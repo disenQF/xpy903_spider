@@ -14,6 +14,14 @@ ssl._create_default_https_context = ssl._create_unverified_context
 def get(url,
         params: dict = None,
         headers: dict = None) -> HTTPResponse:
+    """
+
+    :param url:
+    :param params:
+    :param headers:
+    :return:
+    """
+
     if params:
         params_str = urlencode(params)
 
