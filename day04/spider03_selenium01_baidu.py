@@ -48,7 +48,6 @@ def start():
 
         time.sleep(2)
 
-
     time.sleep(5)
     chrome.quit()  # chrome.close()
 
