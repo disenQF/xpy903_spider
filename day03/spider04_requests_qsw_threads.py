@@ -27,14 +27,18 @@ class DownloaderThread(Thread):
         while True:
             try:
                 # url, callback, **kwargs
-                url, callback, *params= self.tasks.get(timeout=30)
-                print(url, callback, params)
-                if len(params) > 0:
-                    params = params[0]
-                    self.download(url, callback, **params)
+                # 获取下载任务
+                url, *callback_params = self.tasks.get(timeout=30)
+
+                if len(callback_params) == 0:
+                    self.download(url)
+                elif len(callback_params) == 1:
+                    self.download(url, callback_params[0])
                 else:
-                    self.download(url, callback)
-            except:
+                    self.download(url, callback_params[0], **callback_params[1])
+
+            except Exception as e:
+                print(e)
                 break
 
         print('--下载任务完成--')
@@ -56,18 +60,39 @@ class DownloaderThread(Thread):
 class ParserThread(Thread):
     def __init__(self, tasks_queue, results_queue, items_queue):
         super(ParserThread, self).__init__()
-        self.results = results_queue
-        self.items = items_queue
-        self.tasks = tasks_queue
+        self.results: Queue = results_queue
+        self.items: Queue = items_queue
+        self.tasks: Queue = tasks_queue
 
-    def parse(html):
+    def run(self):
+        while True:
+            try:
+                html, *callback_params = self.results.get(timeout=30)
+                if len(callback_params) == 0:
+                    self.parse(html)
+
+                elif len(callback_params) >= 1:
+                    callback = callback_params[0] # str
+                    f = eval(callback)
+
+                    if len(callback_params) == 1:
+                        f(html)
+                    else:
+                        kwargs = callback_params[1]
+                        f(html, **kwargs)
+            except:
+                break
+
+        print('---解析任务完成--')
+
+    def parse(self, html):
         root = etree.HTML(html)
         nav_list = root.xpath('//ul[@class="channel-nav-list"]/li/a')[:-1]
         for nav_a in nav_list:
             print(nav_a.get('href'), nav_a.text)
-            download(nav_a.get('href'), parse_book)
+            self.tasks.put((nav_a.get('href'), 'self.parse_book'))
 
-    def parse_book(html):
+    def parse_book(self, html):
         root = etree.HTML(html)
         seeWell_lis = root.xpath('//ul[starts-with(@class,"seeWell")]/li')
         for seeWell_li in seeWell_lis:
@@ -80,31 +105,44 @@ class ParserThread(Thread):
             item['info'] = seeWell_li.xpath('./span/em/text()')[0]
             item['info_url'] = seeWell_li.xpath('./span/a[last()]/@href')[0]
 
-            itempipeline(item)
+            self.items.put(item)  # 将数据存入数据处理队列中
 
-            download(item['info_url'],
-                     parse_detail,
-                     book_name=item['name'])
+            # 将新的下载任务存放到下载任务队列中
+            self.tasks.put((item['info_url'],
+                            'self.parse_detail',
+                            {'book_name':item['name']}))
 
-    def parse_detail(html, book_name):
+    def parse_detail(self, html, book_name):
         root = etree.HTML(html)
         read_url = root.xpath('//div[@class="b-oper"]/a[1]/@href')[0]
-        download(read_url, parse_chaps, book_name=book_name)
+        self.tasks.put((read_url, 'self.parse_chaps', {'book_name':book_name}))
 
-    def parse_chaps(html, book_name):
+    def parse_chaps(self, html, book_name):
         root = etree.HTML(html)
         chap_lis = root.xpath('//div[@class="clearfix dirconone"]/li')
         for chap_li in chap_lis:
             item = ChapterItem()
             item['title'], item['chap_url'] = chap_li.xpath('./a/@title | ./a/@href')
             item['book_name'] = book_name
-            itempipeline(item)
+            self.items.put(item)
 
 
 class ItemThread(Thread):
-    pass
+    def __init__(self, items_queue):
+        super(ItemThread, self).__init__()
+        self.items: Queue = items_queue
 
-    def itempipeline(item):
+    def run(self):
+        while True:
+            try:
+                item = self.items.get(timeout=60)
+                self.itempipeline(item)
+            except:
+                break
+
+        print('-------')
+
+    def itempipeline(self, item):
         if isinstance(item, BookItem):
             print('---保存书信息--')
             print(item)
@@ -120,10 +158,19 @@ if __name__ == '__main__':
     result_queue = Queue()
     items_queue = Queue()
 
-    tasks_queue.put(('http://www.quanshuwang.com', parse))
+    tasks_queue.put(('http://www.quanshuwang.com', ))
 
     downloader = DownloaderThread(tasks_queue, result_queue)
     downloader.start()
 
+    parser = ParserThread(tasks_queue, result_queue, items_queue)
+    parser.start()
+
+    itempipeline = ItemThread(items_queue)
+    itempipeline.start()
+
     downloader.join()
+    parser.join()
+    itempipeline.join()
+
     print('---over----')
