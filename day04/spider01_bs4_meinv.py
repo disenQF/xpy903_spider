@@ -32,11 +32,11 @@ def download(url, data=None, callback=None, **kwargs):
         resp = requests.post(url, data=data, headers=headers, timeout=5)
 
     if resp.status_code == 200:
-        # content_type = resp.headers['Content-Type']
+        # content_type = resp.headers['Content-Type']  # // text/html;
         if not data:
             html = resp.text
         else:
-            body = resp.content
+            body = resp.content  # 获取响应的字节码  b'{}'
             resp_text = body[len(b'\xef\xbb\xbf'):].decode('utf-8')
             resp_json = json.loads(resp_text, encoding='utf-8')
             html = resp_json.get('postlist')
@@ -62,6 +62,11 @@ def parse(html, **kwargs):
 def itempipeline(item):
     print(item)
 
+    # 下载图片
+    resp = requests.get(item['cover_url'])
+    with open(f'images/{item["name"]}.jpg', 'wb') as f:
+        f.write(resp.content)
+
 
 if __name__ == '__main__':
     download('http://www.meinv.hk/')
@@ -69,7 +74,7 @@ if __name__ == '__main__':
     # 加载更多
     more_url = 'http://www.meinv.hk/wp-admin/admin-ajax.php'
 
-    for page in range(2, 13):
+    for page in range(2, 39):
         """
         post请求  
         total=39&action=fa_load_postlist&paged=2&home=true&wowDelay=0.3s
